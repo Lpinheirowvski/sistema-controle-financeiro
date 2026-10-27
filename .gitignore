@@ -1,0 +1,11 @@
+# Arquivos com senhas e configuracoes privadas
+.env
+.env.*
+!.env.example
+
+# Arquivos temporarios
+*.log
+*.tmp
+
+# Configuracoes locais
+.vscode/
