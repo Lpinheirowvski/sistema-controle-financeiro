@@ -26,9 +26,9 @@ Projeto desenvolvido para praticar SQL e gerar relatórios financeiros de pequen
 ## Como executar
 
 1. Instale o MySQL 8.0.
-2. Execute o arquivo 01_estrutura.sql.
-3. Execute o arquivo 02_dados.sql.
-4. Execute o arquivo 03_relatorios.sql  
+2. Execute o arquivo "01_estrutura.sql"
+3. Execute o arquivo "02_dados.sql"
+4. Execute o arquivo "03_relatorios.sql"  
   para visualizar os relatórios.
 
 ## Status
