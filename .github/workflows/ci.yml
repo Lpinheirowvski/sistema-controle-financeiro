@@ -23,13 +23,6 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=30
-    env:
-      DB_HOST: 127.0.0.1
-      DB_PORT: '3306'
-      DB_NAME: financial_test
-      DB_USER: root
-      DB_PASSWORD: ci-only-ephemeral-password
-      RUN_MYSQL_TESTS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,6 +33,13 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: financial_test
+          DB_USER: root
+          DB_PASSWORD: ci-only-ephemeral-password
+          RUN_MYSQL_TESTS: '1'
       - name: Check Compose configuration without printing credentials
         run: |
           python scripts/setup_env.py

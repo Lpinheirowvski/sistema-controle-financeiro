@@ -71,6 +71,7 @@ CSV and Excel files were downloaded through the browser buttons and reopened. Th
 - The host could not reach the isolated test database IP. Running the Python tests inside its internal Docker network resolved this without publishing MySQL ports.
 - The managed environment required its trusted proxy CA during Docker dependency installation. The build succeeded using a temporary BuildKit secret, with TLS verification enabled. The CA is not copied into image layers.
 - The first startup exposed a permissions problem in the runtime-user initialization script. Its executable/read permissions were corrected; runtime CRUD access and denial of schema changes were then verified.
+- The first remote CI run passed all 32 tests but its startup check found test database variables overriding the application configuration. Test credentials were scoped to the pytest step so the Compose application uses its own generated credentials.
 - Dev Container service profiles were validated after adding an explicit development override. The VS Code graphical attachment itself was not exercised.
 - The application intentionally has no authentication, multi-currency accounting, account/category editing UI, or background scheduler. Reporting loads the selected ledger into memory.
 - The SQL monthly view uses MySQL's default recursive CTE limit. Very long histories need a higher session limit, as documented in the README.
