@@ -3,11 +3,11 @@ services:
     profiles: !reset []
   dev:
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       target: test
     volumes:
-      - ..:/app:cached
+      - .:/app:cached
     command: ["sleep", "infinity"]
     environment:
       DB_HOST: db-test

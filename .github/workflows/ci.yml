@@ -44,6 +44,7 @@ jobs:
         run: |
           python scripts/setup_env.py
           docker compose config --quiet
+          docker compose -f compose.yaml -f .devcontainer/compose.dev.yaml config --quiet
       - name: Build production image
         run: docker build --target base -t financial-analytics:local .
       - name: Verify startup and runtime database permissions
