@@ -1,0 +1,108 @@
+name: financial-analytics
+
+x-app: &app
+  build:
+    context: .
+    target: base
+  image: financial-analytics:local
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+services:
+  db:
+    image: mysql:8.0.46
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:-controle_financeiro}
+      MYSQL_USER: financial_migrator
+      MYSQL_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD in .env}
+      DB_USER: ${DB_USER:-financial_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/01-runtime-user.sh:/docker-entrypoint-initdb.d/01-runtime-user.sh:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql -uroot -Nse 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    profiles: [tools]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-controle_financeiro}
+      DB_USER: financial_migrator
+      DB_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD in .env}
+      BACKUP_DIR: /app/backups
+    volumes:
+      - migration_backups:/app/backups
+    networks: [backend]
+    depends_on:
+      db: {condition: service_healthy}
+    command: ["python", "-m", "financial_analytics.cli", "init"]
+
+  app:
+    <<: *app
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-controle_financeiro}
+      DB_USER: ${DB_USER:-financial_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports: ["127.0.0.1:8501:8501"]
+    networks: [backend, frontend]
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  db-test:
+    image: mysql:8.0.46
+    profiles: [test]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: financial_test
+    tmpfs: [/var/lib/mysql]
+    networks: [testing]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql -uroot -Nse 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  tests:
+    <<: *app
+    image: financial-analytics:tests
+    build:
+      context: .
+      target: test
+    profiles: [test]
+    environment:
+      DB_HOST: db-test
+      DB_NAME: financial_test
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      RUN_MYSQL_TESTS: "1"
+    networks: [testing]
+    depends_on:
+      db-test: {condition: service_healthy}
+    command: ["pytest", "-q", "-p", "no:cacheprovider"]
+
+volumes:
+  mysql_data:
+  migration_backups:
+
+networks:
+  backend: {internal: true}
+  testing: {internal: true}
+  frontend:

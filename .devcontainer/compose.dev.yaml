@@ -1,0 +1,20 @@
+services:
+  db-test:
+    profiles: !reset []
+  dev:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: test
+    volumes:
+      - ..:/app:cached
+    command: ["sleep", "infinity"]
+    environment:
+      DB_HOST: db-test
+      DB_NAME: financial_test
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Generate .env before opening the dev container}
+      RUN_MYSQL_TESTS: "1"
+    networks: [testing]
+    depends_on:
+      db-test: {condition: service_healthy}

@@ -9,3 +9,17 @@
 
 # Configuracoes locais
 .vscode/
+
+# Python and local artifacts
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+work/
+backups/
+reports/
+*.egg-info/
+.DS_Store
