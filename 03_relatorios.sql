@@ -1,36 +1,38 @@
-use coontrole_financeiro;
-select table_schema, TABLE_NAME from information_schema.tables where table_name = 'transacoes';
-select * from transacoes;
-select sum(valor) as total_receitas from transacoes where tipo ='receita';
-select sum(valor) AS total_despesas from transacoes WHERE TIPO ='despesa';
-select sum(CASE when tipo = 'receita' then valor else 0 end) -
-       sum(case when tipo = 'despesa' then valor else 0 end) as saldo
-from transacoes; 
-select count(*) as total_transacoes from transacoes;
-select * from transacoes where valor >500;
-select * from transacoes where valor <1000;
-select * from transacoes order by valor DESC;
-select * from transacoes order by valor ASC;
-select * from transacoes where tipo = 'despesa' order by valor DESC;
-select * from transacoes where tipo = 'receita' order by valor ASC;
-select * from transacoes;
-select
-    tipo,
-    sum(valor) as total
-from transacoes
-group by tipo;
-select * from transacoes where id = 3;
-select
-    tipo,
-    count(*) as quantidade,
-    sum(valor) as total
-from transacoes
-group by tipo;
-select
-    tipo,
-    count(*) as quantidade,
-    sum(valor) as total
-from transacoes
-where data_transacao BETWEEN '2026-10-01' AND '2026-10-31'
-group by tipo;
-select count(*) as quantidade from transacoes where tipo = 'receita';
+USE controle_financeiro;
+
+-- Run `python -m financial_analytics.cli init` before these v2 reports.
+-- Monthly cash flow, zero-filled calendar, cumulative balance and period comparison.
+SELECT * FROM v_monthly_summary ORDER BY month;
+
+-- JOIN, GROUP BY, HAVING: categories with meaningful expense totals.
+SELECT c.name AS category, COUNT(*) AS transaction_count, SUM(t.amount) AS expenses
+FROM transactions t
+JOIN categories c ON c.id = t.category_id
+WHERE c.kind = 'expense'
+GROUP BY c.id, c.name
+HAVING SUM(t.amount) > 500
+ORDER BY expenses DESC;
+
+-- Deterministic running cash balance (date ties broken by primary key).
+SELECT id, transaction_date, description, category, account, signed_amount,
+       SUM(signed_amount) OVER (
+           ORDER BY transaction_date, id ROWS UNBOUNDED PRECEDING
+       ) AS cumulative_balance
+FROM v_transaction_details ORDER BY transaction_date, id;
+
+-- CTE and window ranking: expense share by category.
+WITH expense_totals AS (
+    SELECT category, SUM(amount) AS expenses
+    FROM v_transaction_details WHERE kind = 'expense' GROUP BY category
+)
+SELECT category, expenses,
+       DENSE_RANK() OVER (ORDER BY expenses DESC) AS expense_rank,
+       ROUND(100 * expenses / NULLIF(SUM(expenses) OVER (), 0), 2) AS share_percent
+FROM expense_totals ORDER BY expense_rank, category;
+
+-- Conditional aggregation: account cash movements, all amounts in BRL.
+SELECT account,
+       SUM(CASE WHEN kind = 'income' THEN amount ELSE 0 END) AS income,
+       SUM(CASE WHEN kind = 'expense' THEN amount ELSE 0 END) AS expenses,
+       SUM(signed_amount) AS net
+FROM v_transaction_details GROUP BY account ORDER BY account;
